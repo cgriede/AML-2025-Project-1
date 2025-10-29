@@ -53,12 +53,12 @@ class RandomSubsetSelector:
         model = clone(self.estimator)
         scorer = check_scoring(model, scoring=self.scoring)
         cv_scores = cross_val_score(
-            model, X[:, subset], y, cv=self.cv, scoring=scorer, n_jobs=1
+            model, X.iloc[:, subset], y, cv=self.cv, scoring=scorer, n_jobs=1
         )
         return cv_scores.mean(), subset.tolist()
 
     # ----------------------------------------------------------
-    def fit(self, X: np.ndarray, y: np.ndarray, feature_names: List[str] | None = None):
+    def fit(self, X: pd.DataFrame, y: pd.Series, feature_names: List[str] | None = None):
         """
         Run the Monte-Carlo search.
         X : array (n_samples, n_features)
@@ -66,6 +66,7 @@ class RandomSubsetSelector:
         feature_names : optional list for pretty output
         """
         n_features = X.shape[1]
+        print(n_features)
         if feature_names is None:
             feature_names = [f"f{i}" for i in range(n_features)]
 
