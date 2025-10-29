@@ -8,7 +8,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import check_scoring
 from joblib import Parallel, delayed
 from typing import Tuple, List
-
+from scipy.stats import binom
 
 class RandomSubsetSelector:
     """
@@ -101,23 +101,44 @@ class RandomSubsetSelector:
 
         # ---- 4. keep top-k performing subsets -------------------------
         self.scores_.sort(key=lambda x: x[0], reverse=True)
-        top_subsets = [feats for _, feats in self.scores_[: self.top_k]]
 
-        # ---- 5. count feature frequency in top subsets ----------------
         freq = np.zeros(n_features, dtype=int)
-        for feats in top_subsets:
-            freq[feats] += 1
+        score_sum = np.zeros(n_features, dtype=float)
+        for score, feats in self.scores_[: self.top_k]:
+        # ---- 5. count feature frequency in top subsets ----------------
+            for feat in feats:
+                freq[feat] += 1
+                score_sum[feat] += score
 
-        self.feature_counts_ = pd.Series(freq, index=feature_names).sort_values(ascending=False)
+        avg_score = np.divide(score_sum, freq, out=np.zeros_like(score_sum), where=freq != 0)
 
-        # ---- 6. decide final feature set -------------------------------
-        #   *Option A*: keep features that appear in **any** top subset
-        #   *Option B*: keep the N most frequent features (here N = median size of top subsets)
-        median_size = np.median([len(s) for s in top_subsets]).astype(int)
-        self.selected_features_ = self.feature_counts_.head(median_size).index.tolist()
+        # Store as DataFrame for easier access
+        self.feature_counts_ = pd.DataFrame({
+            'times_in_top_k': freq,
+            'avg_score': avg_score
+        }, index=feature_names).sort_values('times_in_top_k', ascending=False)
+
+
+        # ---- 6. decide final feature set: keep statistically significant features -------------------------------
+        k = self.top_k
+        p = self.subset_frac
+        alpha = 0.05  # Significance threshold; adjust as needed
+        p_values = []
+        for f in freq:
+            if f > 0:
+                p_val = 1 - binom.cdf(f - 1, k, p)
+            else:
+                p_val = 1.0
+            p_values.append(p_val)
+        
+        # Add p_values to feature_counts_
+        self.feature_counts_['p_value'] = p_values
+        
+        # Select features with p_value < alpha
+        self.selected_features_ = self.feature_counts_[self.feature_counts_['p_value'] < alpha].index.tolist()
 
         if self.verbose:
-            print(f"Selected {len(self.selected_features_)} features:")
+            print(f"Selected {len(self.selected_features_)} features (p < {alpha}):")
             print(self.selected_features_)
 
         return self
@@ -142,6 +163,6 @@ class RandomSubsetSelector:
     @property
     def summary(self) -> pd.DataFrame:
         """Nice table: feature | times_in_top_k | selected?"""
-        df = self.feature_counts_.to_frame("times_in_top_k")
+        df = self.feature_counts_.copy()
         df["selected"] = df.index.isin(self.selected_features_)
         return df.sort_values("times_in_top_k", ascending=False)
