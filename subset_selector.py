@@ -8,6 +8,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import check_scoring
 from joblib import Parallel, delayed
 from typing import Tuple, List
+from tqdm import tqdm
 
 
 class RandomSubsetSelector:
@@ -30,6 +31,7 @@ class RandomSubsetSelector:
         random_state: int | None = None,
         n_jobs: int = -1,
         verbose: bool = False,
+        max_samples: int | None = 400,
     ):
         self.estimator = estimator
         self.n_trials = n_trials
@@ -40,6 +42,7 @@ class RandomSubsetSelector:
         self.min_features = min_features
         self.random_state = random_state
         self.n_jobs = n_jobs
+        self.max_samples = max_samples
         self.verbose = verbose
 
         self.rng = np.random.default_rng(random_state)
@@ -65,8 +68,15 @@ class RandomSubsetSelector:
         y : array (n_samples,)
         feature_names : optional list for pretty output
         """
+
+        if self.max_samples is not None and X.shape[0] > self.max_samples:
+            if self.verbose:
+                print(f"Subsampling to {self.max_samples} samples for speed.")
+            sample_idx = self.rng.choice(X.shape[0], size=self.max_samples, replace=False)
+            X = X.iloc[sample_idx, :].reset_index(drop=True)
+            y = y.iloc[sample_idx].reset_index(drop=True)
+
         n_features = X.shape[1]
-        print(n_features)
         if feature_names is None:
             feature_names = [f"f{i}" for i in range(n_features)]
 
@@ -77,13 +87,16 @@ class RandomSubsetSelector:
             sorted(self.rng.choice(n_features, size=subset_size, replace=False))
             for _ in range(self.n_trials)
         ]
-
+        if self.verbose:
+            print(f"Generated {len(masks)} random subsets of size {subset_size}.")
         # ---- 2. evaluate in parallel ---------------------------------
         results = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-            delayed(self._evaluate_subset)(X, y, mask) for mask in masks
+            delayed(self._evaluate_subset)(X, y, mask) for mask in tqdm(masks, desc="Evaluating subsets", unit="subset")
         )
+        if self.verbose:
+            print("Completed evaluations.")
 
-        # ---- 3. store (score, feature_list) ---------------------------
+        # ---- 3. store (score, feature_list) --------------------------
         self.scores_ = [(score, feats) for score, feats in results]
 
         # ---- 4. keep top-k performing subsets -------------------------
@@ -112,6 +125,8 @@ class RandomSubsetSelector:
     # ----------------------------------------------------------
     def transform(self, X: np.ndarray) -> np.ndarray:
         """Return X restricted to the selected columns."""
+        if self.verbose:
+            print("Transforming dataset to selected features...")
         if self.selected_features_ is None:
             raise RuntimeError("fit() must be called first")
         col_idx = [i for i, name in enumerate(self.feature_counts_.index) if name in self.selected_features_]
@@ -119,6 +134,8 @@ class RandomSubsetSelector:
 
     # ----------------------------------------------------------
     def fit_transform(self, X, y, **kwargs):
+        if self.verbose:
+            print("Fitting and transforming in one step...")
         return self.fit(X, y, **kwargs).transform(X)
 
     # ----------------------------------------------------------
@@ -128,5 +145,3 @@ class RandomSubsetSelector:
         df = self.feature_counts_.to_frame("times_in_top_k")
         df["selected"] = df.index.isin(self.selected_features_)
         return df.sort_values("times_in_top_k", ascending=False)
-    
-    """End of random_subset_selection.py"""
