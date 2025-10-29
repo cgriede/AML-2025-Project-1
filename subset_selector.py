@@ -8,7 +8,6 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import check_scoring
 from joblib import Parallel, delayed
 from typing import Tuple, List
-from tqdm import tqdm
 
 
 class RandomSubsetSelector:
@@ -25,7 +24,7 @@ class RandomSubsetSelector:
         n_trials: int = 500,
         subset_frac: float = 0.7,
         cv: int = 5,
-        scoring: str = "accuracy",
+        scoring: str = "r2",
         top_k: int = 50,
         min_features: int = 1,
         random_state: int | None = None,
@@ -49,6 +48,7 @@ class RandomSubsetSelector:
         self.scores_ = []          # (score, subset) pairs
         self.selected_features_ = None
         self.feature_counts_ = None
+        self.X_original_ = pd.DataFrame()
 
     # ----------------------------------------------------------
     def _evaluate_subset(self, X, y, subset) -> Tuple[float, List[int]]:
@@ -58,7 +58,7 @@ class RandomSubsetSelector:
         cv_scores = cross_val_score(
             model, X.iloc[:, subset], y, cv=self.cv, scoring=scorer, n_jobs=1
         )
-        return cv_scores.mean(), subset.tolist()
+        return cv_scores.mean(), subset
 
     # ----------------------------------------------------------
     def fit(self, X: pd.DataFrame, y: pd.Series, feature_names: List[str] | None = None):
@@ -91,7 +91,7 @@ class RandomSubsetSelector:
             print(f"Generated {len(masks)} random subsets of size {subset_size}.")
         # ---- 2. evaluate in parallel ---------------------------------
         results = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
-            delayed(self._evaluate_subset)(X, y, mask) for mask in tqdm(masks, desc="Evaluating subsets", unit="subset")
+            delayed(self._evaluate_subset)(X, y, mask) for mask in masks
         )
         if self.verbose:
             print("Completed evaluations.")
@@ -129,11 +129,11 @@ class RandomSubsetSelector:
             print("Transforming dataset to selected features...")
         if self.selected_features_ is None:
             raise RuntimeError("fit() must be called first")
-        col_idx = [i for i, name in enumerate(self.feature_counts_.index) if name in self.selected_features_]
-        return X[:, col_idx]
+        return self.X_original_[self.selected_features_]
 
     # ----------------------------------------------------------
     def fit_transform(self, X, y, **kwargs):
+        self.X_original_ = X.copy()
         if self.verbose:
             print("Fitting and transforming in one step...")
         return self.fit(X, y, **kwargs).transform(X)
