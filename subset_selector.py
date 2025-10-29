@@ -1,0 +1,131 @@
+# --------------------------------------------------------------
+#  random_subset_selection.py
+# --------------------------------------------------------------
+import numpy as np
+import pandas as pd
+from sklearn.base import clone
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import check_scoring
+from joblib import Parallel, delayed
+from typing import Tuple, List
+
+
+class RandomSubsetSelector:
+    """
+    Monte-Carlo feature selection:
+      1) Sample many random subsets.
+      2) Evaluate each with CV.
+      3) Keep features that appear most often in the best-scoring subsets.
+    """
+
+    def __init__(
+        self,
+        estimator,
+        n_trials: int = 500,
+        subset_frac: float = 0.7,
+        cv: int = 5,
+        scoring: str = "accuracy",
+        top_k: int = 50,
+        min_features: int = 1,
+        random_state: int | None = None,
+        n_jobs: int = -1,
+        verbose: bool = False,
+    ):
+        self.estimator = estimator
+        self.n_trials = n_trials
+        self.subset_frac = subset_frac
+        self.cv = cv
+        self.scoring = scoring
+        self.top_k = top_k
+        self.min_features = min_features
+        self.random_state = random_state
+        self.n_jobs = n_jobs
+        self.verbose = verbose
+
+        self.rng = np.random.default_rng(random_state)
+        self.scores_ = []          # (score, subset) pairs
+        self.selected_features_ = None
+        self.feature_counts_ = None
+
+    # ----------------------------------------------------------
+    def _evaluate_subset(self, X, y, subset) -> Tuple[float, List[int]]:
+        """Train+CV on a single subset (executed in parallel)."""
+        model = clone(self.estimator)
+        scorer = check_scoring(model, scoring=self.scoring)
+        cv_scores = cross_val_score(
+            model, X[:, subset], y, cv=self.cv, scoring=scorer, n_jobs=1
+        )
+        return cv_scores.mean(), subset.tolist()
+
+    # ----------------------------------------------------------
+    def fit(self, X: np.ndarray, y: np.ndarray, feature_names: List[str] | None = None):
+        """
+        Run the Monte-Carlo search.
+        X : array (n_samples, n_features)
+        y : array (n_samples,)
+        feature_names : optional list for pretty output
+        """
+        n_features = X.shape[1]
+        if feature_names is None:
+            feature_names = [f"f{i}" for i in range(n_features)]
+
+        subset_size = max(self.min_features, int(n_features * self.subset_frac))
+
+        # ---- 1. generate random masks --------------------------------
+        masks = [
+            sorted(self.rng.choice(n_features, size=subset_size, replace=False))
+            for _ in range(self.n_trials)
+        ]
+
+        # ---- 2. evaluate in parallel ---------------------------------
+        results = Parallel(n_jobs=self.n_jobs, verbose=self.verbose)(
+            delayed(self._evaluate_subset)(X, y, mask) for mask in masks
+        )
+
+        # ---- 3. store (score, feature_list) ---------------------------
+        self.scores_ = [(score, feats) for score, feats in results]
+
+        # ---- 4. keep top-k performing subsets -------------------------
+        self.scores_.sort(key=lambda x: x[0], reverse=True)
+        top_subsets = [feats for _, feats in self.scores_[: self.top_k]]
+
+        # ---- 5. count feature frequency in top subsets ----------------
+        freq = np.zeros(n_features, dtype=int)
+        for feats in top_subsets:
+            freq[feats] += 1
+
+        self.feature_counts_ = pd.Series(freq, index=feature_names).sort_values(ascending=False)
+
+        # ---- 6. decide final feature set -------------------------------
+        #   *Option A*: keep features that appear in **any** top subset
+        #   *Option B*: keep the N most frequent features (here N = median size of top subsets)
+        median_size = np.median([len(s) for s in top_subsets]).astype(int)
+        self.selected_features_ = self.feature_counts_.head(median_size).index.tolist()
+
+        if self.verbose:
+            print(f"Selected {len(self.selected_features_)} features:")
+            print(self.selected_features_)
+
+        return self
+
+    # ----------------------------------------------------------
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        """Return X restricted to the selected columns."""
+        if self.selected_features_ is None:
+            raise RuntimeError("fit() must be called first")
+        col_idx = [i for i, name in enumerate(self.feature_counts_.index) if name in self.selected_features_]
+        return X[:, col_idx]
+
+    # ----------------------------------------------------------
+    def fit_transform(self, X, y, **kwargs):
+        return self.fit(X, y, **kwargs).transform(X)
+
+    # ----------------------------------------------------------
+    @property
+    def summary(self) -> pd.DataFrame:
+        """Nice table: feature | times_in_top_k | selected?"""
+        df = self.feature_counts_.to_frame("times_in_top_k")
+        df["selected"] = df.index.isin(self.selected_features_)
+        return df.sort_values("times_in_top_k", ascending=False)
+    
+    """End of random_subset_selection.py"""
