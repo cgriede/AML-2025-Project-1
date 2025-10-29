@@ -8,7 +8,7 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import check_scoring
 from joblib import Parallel, delayed
 from typing import Tuple, List
-from scipy.stats import binom
+from scipy.stats import binomtest
 
 class RandomSubsetSelector:
     """
@@ -120,20 +120,16 @@ class RandomSubsetSelector:
 
 
         # ---- 6. decide final feature set: keep statistically significant features -------------------------------
-        k = self.top_k
-        p = self.subset_frac
         alpha = 0.05  # Significance threshold; adjust as needed
         p_values = []
-        for f in freq:
-            if f > 0:
-                p_val = 1 - binom.cdf(f - 1, k, p)
-            else:
-                p_val = 1.0
+
+        for count in self.feature_counts_['times_in_top_k']:
+            p_val = binomtest(count, n=self.top_k, p=self.subset_frac, alternative='greater').pvalue
             p_values.append(p_val)
-        
+
         # Add p_values to feature_counts_
         self.feature_counts_['p_value'] = p_values
-        
+
         # Select features with p_value < alpha
         self.selected_features_ = self.feature_counts_[self.feature_counts_['p_value'] < alpha].index.tolist()
 
@@ -142,6 +138,7 @@ class RandomSubsetSelector:
             print(self.selected_features_)
 
         return self
+
 
     # ----------------------------------------------------------
     def transform(self, X: np.ndarray) -> np.ndarray:
