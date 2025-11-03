@@ -1,0 +1,4 @@
+Model  Best R² (CV)  Train R²  Test R²  Test MAE
+TorchNN        0.1268    0.8376   0.1973    6.2288
+                                                                                                                                                                                                                        Best Params
+{'model__optimizer__lr': 0.001, 'model__module__num_layers': 4, 'model__module__hidden_units': 512, 'model__module__activation': <class 'torch.nn.modules.activation.Sigmoid'>, 'model__max_epochs': 1000, 'model__batch_size': 64

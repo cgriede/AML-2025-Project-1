@@ -31,6 +31,7 @@ class RandomSubsetSelector:
         n_jobs: int = -1,
         verbose: bool = False,
         max_samples: int | None = 400,
+        alpha: float = 0.05,
     ):
         self.estimator = estimator
         self.n_trials = n_trials
@@ -43,7 +44,7 @@ class RandomSubsetSelector:
         self.n_jobs = n_jobs
         self.max_samples = max_samples
         self.verbose = verbose
-
+        self.alpha = alpha
         self.rng = np.random.default_rng(random_state)
         self.scores_ = []          # (score, subset) pairs
         self.selected_features_ = None
@@ -120,7 +121,7 @@ class RandomSubsetSelector:
 
 
         # ---- 6. decide final feature set: keep statistically significant features -------------------------------
-        alpha = 0.05  # Significance threshold; adjust as needed
+        alpha = self.alpha  # Significance threshold; adjust as needed
         p_values = []
 
         for count in self.feature_counts_['times_in_top_k']:
