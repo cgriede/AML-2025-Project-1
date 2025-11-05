@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.base import clone
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import check_scoring
+from sklearn.preprocessing import StandardScaler
 from joblib import Parallel, delayed
 from typing import Tuple, List
 from scipy.stats import binomtest
@@ -82,6 +83,10 @@ class RandomSubsetSelector:
             feature_names = [f"f{i}" for i in range(n_features)]
 
         subset_size = max(self.min_features, int(n_features * self.subset_frac))
+
+        self.scaler = StandardScaler()
+        X = pd.DataFrame(self.scaler.fit_transform(X), columns=X.columns)
+        y = pd.Series(self.scaler.fit_transform(y.values.reshape(-1, 1)).flatten())
 
         # ---- 1. generate random masks --------------------------------
         masks = [
@@ -164,3 +169,55 @@ class RandomSubsetSelector:
         df = self.feature_counts_.copy()
         df["selected"] = df.index.isin(self.selected_features_)
         return df.sort_values("times_in_top_k", ascending=False)
+    
+
+"""
+
+#use like this
+from subset_selector import RandomSubsetSelector
+from xgboost import XGBRegressor
+
+alpha = 0.15
+selector = RandomSubsetSelector(
+    estimator=XGBRegressor(
+        n_estimators=100,      # Number of trees; start low for speed in subset selection
+        max_depth=4,           # Tree depth; controls complexity
+        learning_rate=0.05,     # Step size; balances speed and accuracy
+        subsample=0.6,         # Fraction of samples per tree; adds randomness
+        colsample_bytree=0.6,  # Fraction of features per tree; helps with high-dimensional data
+        random_state=42,       # For reproducibility
+        n_jobs=-1              # Use all cores
+    ),
+    n_trials=1200,          # more trials → better coverage
+    subset_frac=0.02,
+    cv=4,
+    top_k=400,
+    n_jobs=-1,
+    verbose=True,
+    random_state=42,
+    max_samples=300,
+    alpha=alpha
+)
+
+def load_cached_features(file: Path) -> pd.DataFrame:
+    with open(filename, "r") as f:
+        cols = [line.strip() for line in f.readlines()]
+    return X_train_cleaned[cols]
+
+load_cached = False
+filename = None
+X_selected = None
+if not load_cached:
+    X_selected = selector.fit_transform(X_train_cleaned, y_train_cleaned, feature_names=X_train_cleaned.columns)
+    filename = Path("feature_selection") / f"sc_alpha{alpha*100:.0f}_{len(selector.selected_features_)}f.csv"
+    with open(filename, "w") as f:
+        for feature in selector.selected_features_:
+            f.write(f"{feature}\n")
+    print("\n=== Top-10 most frequent features in best subsets ===")
+    print(selector.summary.head(20))
+    print(f"Selected feature set shape: {X_selected.shape}")
+else:
+    filename = Path("feature_selection").iterdir().filter(lambda f: f.name.startswith(f"alpha")).__next__()
+    X_selected = load_cached_features(filename)
+    
+"""
