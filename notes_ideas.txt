@@ -1,0 +1,9 @@
+Idea behind shrinkage: When white noise is added to the data then all Fourier coefficients
+are increased by a constant on average. ⇒ Shrink all coefficients by the estimated noise
+amount to derive a robust predictor.
+
+(We must respect noise in this problem since it is very similar to the cancer example)
+
+Kernel engineering is important in many domains!
+It allows us to flexibly model machine learning solutions for various data types like
+strings, graphs, trees, lists, etc., when algorithms depend only on scalar products

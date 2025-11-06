@@ -1,0 +1,98 @@
+
+============================================================
+FINAL MODEL COMPARISON
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.4853    0.9827   0.4998    5.0319
+
+                                                                                                                                                                           Best Params
+{'model__subsample': 0.6, 'model__reg_alpha': 0.5, 'model__n_estimators': 500, 'model__max_depth': 5, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.5}
+============================================================
+RUN 20251104_100953
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.4782    0.9705   0.5053    5.0288
+
+Best Params:
+  Model                                                                                                                                                                            Best Params
+XGBoost {'model__subsample': 0.6, 'model__reg_alpha': 0.5, 'model__n_estimators': 400, 'model__max_depth': 5, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.5}
+
+
+============================================================
+RUN 20251104_102235
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5235    0.9981   0.5549    4.7274
+
+Best Params:
+  Model                                                                                                                                                                             Best Params
+XGBoost {'model__subsample': 0.6, 'model__reg_alpha': 0.1, 'model__n_estimators': 500, 'model__max_depth': 12, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.7}
+
+
+============================================================
+RUN 20251104_102638
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5486    0.9963   0.5777    4.6471
+
+Best Params:
+  Model                                                                                                                                                                            Best Params
+XGBoost {'model__subsample': 0.6, 'model__reg_alpha': 0.5, 'model__n_estimators': 500, 'model__max_depth': 8, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.7}
+
+
+============================================================
+RUN 20251104_103814
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5536    0.9981   0.5809    4.6546
+
+Best Params:
+  Model                                                                                                                                                                            Best Params
+XGBoost {'model__subsample': 0.6, 'model__reg_alpha': 0.6, 'model__n_estimators': 600, 'model__max_depth': 9, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.7}
+
+
+============================================================
+RUN 20251105_224615
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5526    0.9982   0.5414    4.7928
+
+Best Params:
+  Model                                                                                                                                                                            Best Params
+XGBoost {'model__subsample': 0.4, 'model__reg_alpha': 0.5, 'model__n_estimators': 600, 'model__max_depth': 9, 'model__learning_rate': 0.03, 'model__gamma': 1, 'model__colsample_bytree': 0.7}
+
+
+============================================================
+RUN 20251105_225441
+============================================================
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5513    0.9929    0.554    4.7299
+
+Best Params:
+  Model                                                                                                                                                                            Best Params
+XGBoost {'model__subsample': 0.4, 'model__reg_alpha': 0.5, 'model__n_estimators': 600, 'model__max_depth': 8, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.8}
+
+
+============================================================
+RUN 20251105_230048
+============================================================
+Training Parameters: number of features selected: 75
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5494    0.9983   0.5683    4.7151
+
+Best Params:
+  Model                                                                                                                                                                            Best Params
+XGBoost {'model__subsample': 0.6, 'model__reg_alpha': 0.6, 'model__n_estimators': 500, 'model__max_depth': 8, 'model__learning_rate': 0.03, 'model__gamma': 1, 'model__colsample_bytree': 0.8}
+
+
+============================================================
+RUN 20251105_234232
+============================================================
+Training Parameters: number of features selected: 70
+  Model  Best R² (CV)  Train R²  Test R²  Test MAE
+XGBoost        0.5588    0.9979   0.5691    4.6589
+
+Best Params:
+  Model                                                                                                                                                                             Best Params
+XGBoost {'model__subsample': 0.55, 'model__reg_alpha': 0.5, 'model__n_estimators': 600, 'model__max_depth': 9, 'model__learning_rate': 0.02, 'model__gamma': 1, 'model__colsample_bytree': 0.8}
+
